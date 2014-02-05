@@ -1,0 +1,31 @@
+id: InstallPluginsThemes
+name: InstallPluginsThemes
+version: 0.01
+l10n_class: InstallPluginsThemes::L10N
+description: <MT_TRANS phrase="Install plugins or themes from Movable Type Plugins And Themes Directory.">
+author_name: masiuchi
+author_link: https://github.com/masiuchi
+plugin_link: https://github.com/masiuchi/mt-plugin-install-plugins-themes
+
+object_types:
+    plugin_theme: MT::PluginTheme
+
+listing_screens:
+    plugin_theme: $InstallPluginsThemes::MT::PluginTheme::list_screens
+
+list_properties:
+    plugin_theme: $InstallPluginsThemes::MT::PluginTheme::list_props
+
+list_actions:
+    plugin_theme: $InstallPluginsThemes::MT::PluginTheme::list_actions
+
+applications:
+    cms:
+        methods:
+            install_plugin_theme: $InstallPluginsThemes::InstallPluginsThemes::CMS::install_plugin_theme
+
+        callbacks:
+            init_app: $InstallPluginsThemes::InstallPluginsThemes::Callback::init_app
+            template_source.list_theme: $InstallPluginsThemes::InstallPluginsThemes::Callback::tmpl_src_list_theme
+            template_source.cfg_plugin: $InstallPluginsThemes::InstallPluginsThemes::Callback::tmpl_src_cfg_plugin
+

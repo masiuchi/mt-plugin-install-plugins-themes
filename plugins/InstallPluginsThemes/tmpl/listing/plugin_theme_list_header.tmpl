@@ -1,0 +1,15 @@
+<mt:setvarblock name="system_msg" append="1">
+    <mtapp:statusmsg
+        id="license-notification"
+        class="warning"
+        can_close="0">
+        <__trans phrase="Please check the license by yourself before installing.">
+    </mtapp:statusmsg>
+    <mt:if name="request.installed">
+        <mtapp:statusmsg
+            id="installed"
+            class="success">
+            <__trans phrase="You have successfully installed the plugin(s) and/or theme(s).">
+        </mtapp:statusmsg>
+    </mt:if>
+</mt:setvarblock>
