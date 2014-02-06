@@ -135,6 +135,7 @@ sub list_actions {
 sub list_screens {
     return {
         object_label          => 'Plugin and Theme',
+        primary               => 'description',
         contents_label        => 'Plugin and Theme',
         contents_label_plural => 'Plugins and Themes',
         view                  => ['system'],
