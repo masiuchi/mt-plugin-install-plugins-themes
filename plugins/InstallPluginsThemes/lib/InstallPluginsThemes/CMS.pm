@@ -5,15 +5,18 @@ use warnings;
 use File::Spec;
 use File::Temp qw/ tempdir /;
 
+# Max download size.
 our $UA_MAX_SIZE = 10_000_000;
 
 sub install_plugin_theme {
     my $app = shift;
 
+    # Check
     return $app->errtrans('Invalid request.')
         unless $app->request_method eq 'POST' && $app->validate_magic;
     return $app->permission_denied unless $app->user->is_superuser;
 
+    # Set IDs.
     $app->setup_filtered_ids
         if $app->param('all_selected');
     my @id = $app->param('id');
@@ -21,27 +24,35 @@ sub install_plugin_theme {
     require MT::PluginTheme;
     my @plugin = MT::PluginTheme->load( { id => \@id } );
     for my $p (@plugin) {
+
+        # Create temporary directory.
         my $dir = tempdir(
             DIR => $app->config->TempDir,
             $MT::DebugMode ? () : ( CLEANUP => 1 )
         );
+
+        # Generate download URL of zip file.
         my $download_url = _get_url_to_zip( $p->download_url );
         MT->log( 'Donwload URL: ' . $download_url ) if $MT::DebugMode;
         next unless $download_url;
         my ($file) = ( $download_url =~ m/\/([^\/]+)$/ );
         my $download_file = File::Spec->catfile( $dir, $file );
 
+        # Download zip file.
         my $ua = $app->new_ua( { max_size => $UA_MAX_SIZE } );
         my $res
             = $ua->get( $download_url, ':content_file' => $download_file );
 
         next unless $res->is_success;
 
+        # Unzip zip file.
         my $unzip_cmd = "cd $dir; unzip $file";
         MT->log( 'Unzip command: ' . $unzip_cmd ) if $MT::DebugMode;
         my $ret = `$unzip_cmd`;
 
         if ( my $plugin_root = _search_plugin_root($dir) ) {
+
+            # Plugin
             my $no_plugins_dir;
             if ( ref $plugin_root ) {
                 $no_plugins_dir = $plugin_root->{no_plugins_dir};
@@ -57,6 +68,8 @@ sub install_plugin_theme {
             );
         }
         elsif ( my $theme_root = _search_theme_root($dir) ) {
+
+            # Theme
             my $no_themes_dir;
             if ( ref $theme_root ) {
                 $no_themes_dir = $theme_root->{no_themes_dir};
@@ -85,6 +98,7 @@ sub install_plugin_theme {
     );
 }
 
+# Get URL to zip file.
 sub _get_url_to_zip {
     my $url = shift;
 
@@ -111,6 +125,7 @@ sub _get_url_to_zip {
     return $url;
 }
 
+# Search plugin root directory.
 sub _search_plugin_root {
     my $dir = shift;
 
@@ -140,6 +155,7 @@ sub _search_plugin_root {
     return;
 }
 
+# Search theme root directory.
 sub _search_theme_root {
     my $dir = shift;
 
@@ -169,6 +185,7 @@ sub _search_theme_root {
     return;
 }
 
+# Copy files of plugin or theme from temporary directory to MT directory.
 sub _copy_files {
     my $args = shift;
 
