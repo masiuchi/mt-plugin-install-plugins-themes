@@ -9,9 +9,15 @@ __PACKAGE__->mk_accessors(@columns);
 
 sub new { bless {}, shift }
 
-sub datasource             {'plugin_theme'}
-sub class_label            {'Plugin and Theme'}
-sub class_label_plural     {'Plugins and Themes'}
+sub datasource {'plugin_theme'}
+
+sub class_label {
+    MT->component('InstallPluginsThemes')->translate('Plugin and Theme');
+}
+
+sub class_label_plural {
+    MT->component('InstallPluginsThemes')->translate('Plugins and Themes');
+}
 sub container_label        {'Plugin and Theme'}
 sub container_label_plural {'Plugins and Themes'}
 
@@ -139,7 +145,7 @@ sub list_screens {
 sub list_props {
     return {
         name => {
-            label => 'Name',
+            label => 'Plugin or Theme Name',
             html  => sub {
                 my $permalink = $_[1]->permalink;
                 my $name      = $_[1]->name;
