@@ -2,20 +2,6 @@ package InstallPluginsThemes::Callback;
 use strict;
 use warnings;
 
-sub init_app {
-    require MT::CMS::Search;
-    my $core_search_apis = \&MT::CMS::Search::core_search_apis;
-    no warnings 'redefine';
-    *MT::CMS::Search::core_search_apis = sub {
-        my $types = $core_search_apis->(@_);
-        $types->{plugin_theme} = {
-            label     => 'Plugins or Themes',
-            condition => sub {0},
-        };
-        return $types;
-    };
-}
-
 sub tmpl_src_list_theme {
     my ( $cb, $app, $tmpl_ref ) = @_;
 
