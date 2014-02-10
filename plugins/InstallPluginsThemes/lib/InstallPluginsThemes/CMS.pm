@@ -113,7 +113,7 @@ sub _get_url_to_zip {
         return unless $res->is_success;
         my $content = $res->decoded_content;
         return unless $content;
-        my @zip_url = ( $content =~ m/<a href="([^"]+\.zip)"/g );
+        my @zip_url = ( $content =~ m/<a\s*[^<>]*\s*href="([^"]+\.zip)"/g );
         $url = @zip_url ? pop @zip_url : undef;
         return $url;
     }
