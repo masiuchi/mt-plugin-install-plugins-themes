@@ -51,7 +51,8 @@ sub install_plugin_theme {
         # Unzip zip file.
         my $arc = MT::Util::Archive::Zip->new( 'zip', $download_path );
         next unless $arc;
-        $arc->extract($download_dir) or next;
+        $arc->extract( File::Spec->catdir( $download_dir, $p->name ) )
+            or next;
 
         if ( my $plugin_root = _search_plugin_root($download_dir) ) {
 
@@ -142,7 +143,7 @@ sub _search_plugin_root {
                     @{ (shift) };
             },
             no_dir => sub {
-                return +{ plugin_root => shift, no_plugin_dir => 1 };
+                return +{ plugin_root => shift, no_plugins_dir => 1 };
             },
         },
     );
@@ -159,7 +160,7 @@ sub _search_theme_root {
                 return grep { $_ =~ m/theme\.yaml$/ } @{ (shift) };
             },
             no_dir => sub {
-                return +{ theme_root => shift, no_theme_dir => 1 };
+                return +{ theme_root => shift, no_themes_dir => 1 };
             },
         },
     );
