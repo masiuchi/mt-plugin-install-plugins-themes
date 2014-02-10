@@ -87,6 +87,14 @@ sub load {
         @p = @greped_p;
     }
 
+    my $limit  = $args->{limit}  || 0;
+    my $offset = $args->{offset} || 0;
+    if ( $limit || $offset ) {
+        my $start = $offset < $#p ? $offset : $#p;
+        my $end = $limit - 1 + $offset < $#p ? $limit - 1 + $offset : $#p;
+        @p = $start == $end ? ( $p[$start] ) : @p[ $start .. $end ];
+    }
+
     return @p;
 }
 
