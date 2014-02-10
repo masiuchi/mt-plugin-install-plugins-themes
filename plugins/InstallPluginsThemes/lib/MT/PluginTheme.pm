@@ -90,15 +90,19 @@ sub load {
     return @p;
 }
 
-my $url
-    = 'http://app.movabletype.org/mt-data-api.cgi/v1/sites/1/entries?searchFields=title%2Cbody&fields=assets%2Cauthor%2Ctitle%2Cpermalink%2Cbody%2Ccategories%2Cid%2CcustomFields&limit=50';
 my $ua = MT->new_ua;
 
 sub _get_plugins {
 
     unless ( defined $items ) {
+
+        # Get JSON of Plugins And Themes Directory
+        my $url = MT->component('InstallPluginsThemes')
+            ->registry('plugins_themes_directory_url');
         my $res = $ua->get($url);
         return unless $res->is_success;
+
+        # JSON to hash
         my $json = $res->decoded_content;
         require MT::Util;
         my $plugins = MT::Util::from_json($json);
@@ -109,6 +113,8 @@ sub _get_plugins {
             my $cf = $i->{customFields};
             my ($download_url)
                 = grep { $_->{basename} eq 'pd_download_url' } @$cf;
+
+            # Remove plugins and themes installed by the default
             push @new_items, $i unless grep {
                 my $match = quotemeta $_;
                 $download_url->{value} =~ m/$match/
