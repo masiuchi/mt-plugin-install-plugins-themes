@@ -159,8 +159,13 @@ sub list_props {
                 return
                     "<a href=\"${permalink}\" target=\"_blank\"> ${name}</a>";
             },
-            display => 'default',
-            order   => 100,
+            display   => 'default',
+            order     => 100,
+            bulk_sort => sub {
+                my $prop = shift;
+                my ($objs) = @_;
+                return sort { lc( $a->name ) cmp lc( $b->name ) } @$objs;
+            },
         },
         author => {
             label => 'Plugin or Theme Author',
@@ -175,8 +180,13 @@ sub list_props {
                     return $_[1]->author;
                 }
             },
-            display => 'default',
-            order   => 200,
+            display   => 'default',
+            order     => 200,
+            bulk_sort => sub {
+                my $prop = shift;
+                my ($objs) = @_;
+                return sort { lc( $a->author ) cmp lc( $b->author ) } @$objs;
+            },
         },
         description => {
             label   => 'Description',
