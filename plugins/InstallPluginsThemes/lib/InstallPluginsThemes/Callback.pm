@@ -32,4 +32,15 @@ sub _replace_anchor_tag {
     $$tmpl_ref =~ s/$remove//;
 }
 
+# Hide MT::PluginTheme when upgrading.
+sub upgrade_init_app {
+    require MT::Upgrade;
+    my $init = \&MT::Upgrade::init;
+    no warnings 'redefine';
+    *MT::Upgrade::init = sub {
+        $init->(@_);
+        delete $MT::Upgrade::classes{plugin_theme};
+    };
+}
+
 1;
