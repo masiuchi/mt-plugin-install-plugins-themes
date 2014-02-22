@@ -19,6 +19,9 @@ list_properties:
 list_actions:
     plugin_theme: $InstallPluginsThemes::MT::PluginTheme::list_actions
 
+system_filters:
+    plugin_theme: $InstallPluginsThemes::MT::PluginTheme::system_filters
+
 applications:
     cms:
         methods:

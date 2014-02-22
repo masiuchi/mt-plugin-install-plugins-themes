@@ -15,6 +15,10 @@ our %Lexicon = (
     'Install'                => 'インストール',
     'Plugin or Theme Name'   => 'プラグイン／テーマ名',
     'Plugin or Theme Author' => '開発者',
+    'Plugin'                 => 'プラグイン',
+    'Theme'                  => 'テーマ',
+    'Plugins Only'           => 'プラグインのみ',
+    'Themes Only'            => 'テーマのみ',
 
     # tmpl/listing/plugin_theme_list_header.tmpl
     'Please check the license by yourself before installing.' =>

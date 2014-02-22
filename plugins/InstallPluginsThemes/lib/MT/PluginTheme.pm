@@ -4,8 +4,11 @@ use warnings;
 use base qw( Class::Accessor::Fast );
 
 my @columns
-    = qw( id name author description permalink author_link download_url );
+    = qw( id name author description permalink author_link download_url type );
 __PACKAGE__->mk_accessors(@columns);
+
+sub PLUGIN {1}
+sub THEME  {2}
 
 sub new { bless {}, shift }
 
@@ -70,9 +73,12 @@ sub load {
             }
         }
 
+        $p->type( $p->download_url =~ m/theme/ ? THEME() : PLUGIN() );
+
         push @p, $p;
     }
 
+    # Fitler by id.
     if ( exists $terms->{id} ) {
         my @id
             = ref( $terms->{id} ) eq 'ARRAY'
@@ -85,6 +91,12 @@ sub load {
             }
         }
         @p = @greped_p;
+    }
+
+    # Filter by type.
+    if ( ref($terms) eq 'ARRAY' && exists $terms->[0]{type} ) {
+        my $type = $terms->[0]{type};
+        @p = grep { $_->type == $type } @p;
     }
 
     my $limit  = $args->{limit}  || 0;
@@ -196,11 +208,48 @@ sub list_props {
                 return sort { lc( $a->author ) cmp lc( $b->author ) } @$objs;
             },
         },
+        type => {
+            label => 'Type',
+            raw   => sub {
+                MT->component('InstallPluginsThemes')
+                    ->translate(
+                    $_[1]->type == PLUGIN() ? 'Plugin' : 'Theme' );
+            },
+            order                 => 250,
+            base                  => '__virtual.single_select',
+            single_select_options => [
+                {   label => MT->component('InstallPluginsThemes')
+                        ->translate('Plugin'),
+                    text  => 'Plugin',
+                    value => PLUGIN()
+                },
+                {   label => MT->component('InstallPluginsThemes')
+                        ->translate('Theme'),
+                    text  => 'Theme',
+                    value => THEME()
+                },
+            ],
+        },
         description => {
             label   => 'Description',
             html    => sub { $_[1]->description },
             display => 'default',
             order   => 300,
+        },
+    };
+}
+
+sub system_filters {
+    return {
+        plugins_only => {
+            label => 'Plugins Only',
+            items => [ { type => 'type', args => { value => PLUGIN() } } ],
+            order => 100,
+        },
+        themes_only => {
+            label => 'Themes Only',
+            items => [ { type => 'type', args => { value => THEME() } } ],
+            order => 200,
         },
     };
 }
