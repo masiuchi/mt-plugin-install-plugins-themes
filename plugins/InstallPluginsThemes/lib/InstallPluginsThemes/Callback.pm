@@ -2,46 +2,70 @@ package InstallPluginsThemes::Callback;
 use strict;
 use warnings;
 
-sub init_app {
-    require MT::CMS::Search;
-    my $core_search_apis = \&MT::CMS::Search::core_search_apis;
-    no warnings 'redefine';
-    *MT::CMS::Search::core_search_apis = sub {
-        my $types = $core_search_apis->(@_);
-        $types->{plugin_theme} = {
-            label     => 'Plugins or Themes',
-            condition => sub {0},
-        };
-        return $types;
-    };
-}
+use MT::PluginTheme;
 
+# Change 'Find Themes' link.
 sub tmpl_src_list_theme {
     my ( $cb, $app, $tmpl_ref ) = @_;
-
-    my $pre  = quotemeta '<__trans phrase="_THEME_DIRECTORY_URL">';
-    my $post = $app->uri(
-        mode => 'list',
-        args => { _type => 'plugin_theme', blog_id => 0 }
+    _replace_anchor_tag(
+        {   app        => $app,
+            tmpl_ref   => $tmpl_ref,
+            pre_url    => '<__trans phrase="_THEME_DIRECTORY_URL">',
+            filter_key => 'themes_only',
+        }
     );
-    $$tmpl_ref =~ s/$pre/$post/;
+}
 
+# Change 'Find Plugins' link.
+sub tmpl_src_cfg_plugin {
+    my ( $cb, $app, $tmpl_ref ) = @_;
+    _replace_anchor_tag(
+        {   app        => $app,
+            tmpl_ref   => $tmpl_ref,
+            pre_url    => '<__trans phrase="_PLUGIN_DIRECTORY_URL">',
+            filter_key => 'plugins_only',
+        }
+    );
+}
+
+sub init_request {
+    undef @MT::PluginTheme::p;
+}
+
+sub _replace_anchor_tag {
+    my $args = shift;
+
+    my $app        = $args->{app};
+    my $tmpl_ref   = $args->{tmpl_ref};
+    my $pre_url    = $args->{pre_url};
+    my $filter_key = $args->{filter_key};
+
+    # Replace URL.
+    $pre_url = quotemeta $pre_url;
+    my $post_url = $app->uri(
+        mode => 'list',
+        args => {
+            _type      => 'plugin_theme',
+            blog_id    => 0,
+            filter_key => $filter_key,
+        },
+    );
+    $$tmpl_ref =~ s/$pre_url/$post_url/;
+
+    # Remove target attribute in anchor tag.
     my $remove = quotemeta ' target="_blank"';
     $$tmpl_ref =~ s/$remove//;
 }
 
-sub tmpl_src_cfg_plugin {
-    my ( $cb, $app, $tmpl_ref ) = @_;
-
-    my $pre  = quotemeta '<__trans phrase="_PLUGIN_DIRECTORY_URL">';
-    my $post = $app->uri(
-        mode => 'list',
-        args => { _type => 'plugin_theme', blog_id => 0 }
-    );
-    $$tmpl_ref =~ s/$pre/$post/;
-
-    my $remove = quotemeta ' target="_blank"';
-    $$tmpl_ref =~ s/$remove//;
+# Hide MT::PluginTheme when upgrading.
+sub upgrade_init_app {
+    require MT::Upgrade;
+    my $init = \&MT::Upgrade::init;
+    no warnings 'redefine';
+    *MT::Upgrade::init = sub {
+        $init->(@_);
+        delete $MT::Upgrade::classes{plugin_theme};
+    };
 }
 
 1;

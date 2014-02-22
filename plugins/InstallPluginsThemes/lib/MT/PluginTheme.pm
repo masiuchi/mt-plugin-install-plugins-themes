@@ -4,14 +4,23 @@ use warnings;
 use base qw( Class::Accessor::Fast );
 
 my @columns
-    = qw( id name author description permalink author_link download_url );
+    = qw( id name author description permalink author_link download_url type );
 __PACKAGE__->mk_accessors(@columns);
+
+sub PLUGIN {1}
+sub THEME  {2}
 
 sub new { bless {}, shift }
 
-sub datasource             {'plugin_theme'}
-sub class_label            {'Plugin and Theme'}
-sub class_label_plural     {'Plugins and Themes'}
+sub datasource {'plugin_theme'}
+
+sub class_label {
+    MT->component('InstallPluginsThemes')->translate('Plugin and Theme');
+}
+
+sub class_label_plural {
+    MT->component('InstallPluginsThemes')->translate('Plugins and Themes');
+}
 sub container_label        {'Plugin and Theme'}
 sub container_label_plural {'Plugins and Themes'}
 
@@ -20,24 +29,25 @@ sub has_column {
     return ( grep { $_ eq $col } @columns ) ? 1 : 0;
 }
 
-my $items;
+our @p;
 
 sub count {
     my $class = shift;
     my ( $terms, $args ) = @_;
 
-    _get_plugins() or return 0;
+    @p = $class->load( $terms, $args ) or return 0;
 
-    return ref($items) eq 'ARRAY' ? scalar(@$items) : 0;
+    return scalar @p;
 }
 
 sub load {
     my $class = shift;
     my ( $terms, $args ) = @_;
 
-    _get_plugins() or return;
+    return @p if defined @p;
 
-    my @p;
+    my $items = _get_plugins() or return;
+
     my $id = 0;
     for my $data (@$items) {
 
@@ -64,9 +74,12 @@ sub load {
             }
         }
 
+        $p->type( $p->download_url =~ m/theme/ ? THEME() : PLUGIN() );
+
         push @p, $p;
     }
 
+    # Fitler by id.
     if ( exists $terms->{id} ) {
         my @id
             = ref( $terms->{id} ) eq 'ARRAY'
@@ -81,35 +94,52 @@ sub load {
         @p = @greped_p;
     }
 
+    # Filter by type.
+    if ( ref($terms) eq 'ARRAY' && exists $terms->[0]{type} ) {
+        my $type = $terms->[0]{type};
+        @p = grep { $_->type == $type } @p;
+    }
+
+    my $limit  = $args->{limit}  || 0;
+    my $offset = $args->{offset} || 0;
+    if ( $limit || $offset ) {
+        my $start = $offset < $#p ? $offset : $#p;
+        my $end = $limit - 1 + $offset < $#p ? $limit - 1 + $offset : $#p;
+        @p = $start == $end ? ( $p[$start] ) : @p[ $start .. $end ];
+    }
+
     return @p;
 }
 
-my $url
-    = 'http://app.movabletype.org/mt-data-api.cgi/v1/sites/1/entries?searchFields=title%2Cbody&fields=assets%2Cauthor%2Ctitle%2Cpermalink%2Cbody%2Ccategories%2Cid%2CcustomFields&limit=50';
 my $ua = MT->new_ua;
 
 sub _get_plugins {
 
-    unless ( defined $items ) {
-        my $res = $ua->get($url);
-        return unless $res->is_success;
-        my $json = $res->decoded_content;
-        require MT::Util;
-        my $plugins = MT::Util::from_json($json);
-        $items = $plugins->{items};
+    # Get JSON of Plugins And Themes Directory
+    my $url = MT->component('InstallPluginsThemes')
+        ->registry('plugins_themes_directory_url');
+    my $res = $ua->get($url);
+    return unless $res->is_success;
 
-        my @new_items;
-        for my $i (@$items) {
-            my $cf = $i->{customFields};
-            my ($download_url)
-                = grep { $_->{basename} eq 'pd_download_url' } @$cf;
-            push @new_items, $i unless grep {
-                my $match = quotemeta $_;
-                $download_url->{value} =~ m/$match/
-            } qw( mt-plugin-Loupe mt-theme-rainier mt-theme-eiger );
-        }
-        $items = \@new_items;
+    # JSON to hash
+    my $json = $res->decoded_content;
+    require MT::Util;
+    my $plugins = MT::Util::from_json($json);
+    my $items   = $plugins->{items};
+
+    my @new_items;
+    for my $i (@$items) {
+        my $cf = $i->{customFields};
+        my ($download_url)
+            = grep { $_->{basename} eq 'pd_download_url' } @$cf;
+
+        # Remove plugins and themes installed by the default
+        push @new_items, $i unless grep {
+            my $match = quotemeta $_;
+            $download_url->{value} =~ m/$match/
+        } qw( mt-plugin-Loupe mt-theme-rainier mt-theme-eiger );
     }
+    $items = \@new_items;
 
     return $items;
 }
@@ -129,6 +159,7 @@ sub list_actions {
 sub list_screens {
     return {
         object_label          => 'Plugin and Theme',
+        primary               => 'description',
         contents_label        => 'Plugin and Theme',
         contents_label_plural => 'Plugins and Themes',
         view                  => ['system'],
@@ -139,15 +170,20 @@ sub list_screens {
 sub list_props {
     return {
         name => {
-            label => 'Name',
+            label => 'Plugin or Theme Name',
             html  => sub {
                 my $permalink = $_[1]->permalink;
                 my $name      = $_[1]->name;
                 return
                     "<a href=\"${permalink}\" target=\"_blank\"> ${name}</a>";
             },
-            display => 'default',
-            order   => 100,
+            display   => 'default',
+            order     => 100,
+            bulk_sort => sub {
+                my $prop = shift;
+                my ($objs) = @_;
+                return sort { lc( $a->name ) cmp lc( $b->name ) } @$objs;
+            },
         },
         author => {
             label => 'Plugin or Theme Author',
@@ -162,14 +198,56 @@ sub list_props {
                     return $_[1]->author;
                 }
             },
-            display => 'default',
-            order   => 200,
+            display   => 'default',
+            order     => 200,
+            bulk_sort => sub {
+                my $prop = shift;
+                my ($objs) = @_;
+                return sort { lc( $a->author ) cmp lc( $b->author ) } @$objs;
+            },
+        },
+        type => {
+            label => 'Type',
+            raw   => sub {
+                MT->component('InstallPluginsThemes')
+                    ->translate(
+                    $_[1]->type == PLUGIN() ? 'Plugin' : 'Theme' );
+            },
+            order                 => 250,
+            base                  => '__virtual.single_select',
+            single_select_options => [
+                {   label => MT->component('InstallPluginsThemes')
+                        ->translate('Plugin'),
+                    text  => 'Plugin',
+                    value => PLUGIN()
+                },
+                {   label => MT->component('InstallPluginsThemes')
+                        ->translate('Theme'),
+                    text  => 'Theme',
+                    value => THEME()
+                },
+            ],
         },
         description => {
             label   => 'Description',
             html    => sub { $_[1]->description },
             display => 'default',
             order   => 300,
+        },
+    };
+}
+
+sub system_filters {
+    return {
+        plugins_only => {
+            label => 'Plugins Only',
+            items => [ { type => 'type', args => { value => PLUGIN() } } ],
+            order => 100,
+        },
+        themes_only => {
+            label => 'Themes Only',
+            items => [ { type => 'type', args => { value => THEME() } } ],
+            order => 200,
         },
     };
 }
