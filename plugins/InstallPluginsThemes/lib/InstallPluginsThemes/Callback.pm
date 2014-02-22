@@ -2,6 +2,8 @@ package InstallPluginsThemes::Callback;
 use strict;
 use warnings;
 
+use MT::PluginTheme;
+
 # Change 'Find Themes' link.
 sub tmpl_src_list_theme {
     my ( $cb, $app, $tmpl_ref ) = @_;
@@ -24,6 +26,10 @@ sub tmpl_src_cfg_plugin {
             filter_key => 'plugins_only',
         }
     );
+}
+
+sub init_request {
+    undef @MT::PluginTheme::p;
 }
 
 sub _replace_anchor_tag {

@@ -29,24 +29,25 @@ sub has_column {
     return ( grep { $_ eq $col } @columns ) ? 1 : 0;
 }
 
-my $items;
+our @p;
 
 sub count {
     my $class = shift;
     my ( $terms, $args ) = @_;
 
-    _get_plugins() or return 0;
+    @p = $class->load( $terms, $args ) or return 0;
 
-    return ref($items) eq 'ARRAY' ? scalar(@$items) : 0;
+    return scalar @p;
 }
 
 sub load {
     my $class = shift;
     my ( $terms, $args ) = @_;
 
-    _get_plugins() or return;
+    return @p if defined @p;
 
-    my @p;
+    my $items = _get_plugins() or return;
+
     my $id = 0;
     for my $data (@$items) {
 
@@ -114,34 +115,31 @@ my $ua = MT->new_ua;
 
 sub _get_plugins {
 
-    unless ( defined $items ) {
+    # Get JSON of Plugins And Themes Directory
+    my $url = MT->component('InstallPluginsThemes')
+        ->registry('plugins_themes_directory_url');
+    my $res = $ua->get($url);
+    return unless $res->is_success;
 
-        # Get JSON of Plugins And Themes Directory
-        my $url = MT->component('InstallPluginsThemes')
-            ->registry('plugins_themes_directory_url');
-        my $res = $ua->get($url);
-        return unless $res->is_success;
+    # JSON to hash
+    my $json = $res->decoded_content;
+    require MT::Util;
+    my $plugins = MT::Util::from_json($json);
+    my $items   = $plugins->{items};
 
-        # JSON to hash
-        my $json = $res->decoded_content;
-        require MT::Util;
-        my $plugins = MT::Util::from_json($json);
-        $items = $plugins->{items};
+    my @new_items;
+    for my $i (@$items) {
+        my $cf = $i->{customFields};
+        my ($download_url)
+            = grep { $_->{basename} eq 'pd_download_url' } @$cf;
 
-        my @new_items;
-        for my $i (@$items) {
-            my $cf = $i->{customFields};
-            my ($download_url)
-                = grep { $_->{basename} eq 'pd_download_url' } @$cf;
-
-            # Remove plugins and themes installed by the default
-            push @new_items, $i unless grep {
-                my $match = quotemeta $_;
-                $download_url->{value} =~ m/$match/
-            } qw( mt-plugin-Loupe mt-theme-rainier mt-theme-eiger );
-        }
-        $items = \@new_items;
+        # Remove plugins and themes installed by the default
+        push @new_items, $i unless grep {
+            my $match = quotemeta $_;
+            $download_url->{value} =~ m/$match/
+        } qw( mt-plugin-Loupe mt-theme-rainier mt-theme-eiger );
     }
+    $items = \@new_items;
 
     return $items;
 }
