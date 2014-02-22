@@ -1,6 +1,6 @@
 id: InstallPluginsThemes
 name: InstallPluginsThemes
-version: 0.01
+version: 0.02
 l10n_class: InstallPluginsThemes::L10N
 description: <MT_TRANS phrase="Install plugins or themes from Movable Type Plugins And Themes Directory.">
 author_name: masiuchi
